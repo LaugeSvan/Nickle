@@ -29,7 +29,7 @@ client.once(Events.ClientReady, (readyClient) => {
 
     const cronDay = 4
     const cronHour = 12
-    const cronMinute = 00
+    const cronMinute = 0
 
     cron.schedule(`${cronMinute} ${cronHour} * * ${cronDay}`, () => {
         console.log('execute.cron');

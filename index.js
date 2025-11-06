@@ -9,9 +9,11 @@ const OWNER_ID = '976171719616237589'; // Dit bruger-ID
 // Dette sikrer, at Discord ikke forstyrrer den.
 const USER_ID_DELIMITER = "||--DM-FORWARD-USER-ID--||"; 
 
-// Konfiguration fra .env
+// FJERN: forumChannelId er ikke længere nødvendig i .env
+// const forumChannelId = process.env.FORUM_CHANNEL_ID;
+
 const token = process.env.DISCORD_TOKEN;
-const forumChannelId = process.env.FORUM_CHANNEL_ID;
+const TARGET_CHANNEL_NAME = 'onsdagshygge'; // Det nye navn, der skal matches
 
 const timeZone = 'Europe/Copenhagen'; // Dansk tid
 
@@ -32,6 +34,7 @@ const client = new Client({
 client.once(Events.ClientReady, (readyClient) => {
     console.log(`ready.login.${readyClient.user.tag}`);
     console.log(`ready.timezone.${timeZone}`);
+    console.log(`ready.target_channel.${TARGET_CHANNEL_NAME}`);
 
     const cronDay = 4
     const cronHour = 12
@@ -140,13 +143,13 @@ client.on(Events.MessageCreate, async message => {
             console.log(`dm.reply.sent.${targetUser.tag}`);
 
         } catch (error) {
-            console.error('error.dm.reply', error);
+            console.error('error.dm.reply.', error);
             message.author.send(`Der opstod en fejl under afsendelse af svaret: ${error.message}`);
         }
     }
 });
 
-// --- FUNKTIONER TIL ONSDAGSHYGGE (UENDRT) ---
+// --- FUNKTIONER TIL ONSDAGSHYGGE ---
 
 function getNextWednesdayDate() {
     const now = new Date();
@@ -169,28 +172,42 @@ function getNextWednesdayDate() {
 // Hovedfunktionen der opretter forum-posten
 async function createWeeklyOnsdagshyggePost() {
     try {
-        const channel = await client.channels.fetch(forumChannelId);
+        // Find den første guild (server) botten er i
+        const guild = client.guilds.cache.first();
+        if (!guild) {
+            console.error('error.guild.noGuild.');
+            return;
+        }
+
+        // Find Forum-kanalen ved navn 'onsdagshygge'
+        const channel = guild.channels.cache.find(c => 
+            c.type === ChannelType.GuildForum && c.name.toLowerCase() === TARGET_CHANNEL_NAME
+        );
+
         if (!channel) {
-            console.error(`error.channel.notfound.${forumChannelId}`);
+            console.error(`error.channel.notFound.${guild.name}.#${TARGET_CHANNEL_NAME}`);
             return;
         }
-        if (channel.type !== ChannelType.GuildForum) {
-            console.error(`error.channel.notforum.${forumChannelId}`);
-            return;
-        }
+
+        // Resten af logikken bruger nu den fundne 'channel'
         const formattedDate = getNextWednesdayDate();
         const postTitle = `${formattedDate} - Onsdagshygge`;
         const postMessage = 'Så er det tid igen! Ser vi dig på Onsdag til hygge, spil og kaffe? Forslag til hvad vi skal spille er meget velkomne!';
+        
         const newPost = await channel.threads.create({
             name: postTitle,
             message: { content: postMessage },
             reason: 'Automatisk ugentlig onsdagshygge post',
         });
+        
         console.log(`post.new.${postTitle}.${newPost.id}`);
+        
         const starterMessage = await newPost.fetchStarterMessage();
         await starterMessage.react('✅');
         await starterMessage.react('❌');
+        
         console.log('post.react');
+
     } catch (error) {
         console.error('error.post.new', error);
     }

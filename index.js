@@ -159,7 +159,7 @@ async function createWeeklyOnsdagshyggePost() {
 
         const formattedDate = getNextWednesdayDate();
         const postTitle = `${formattedDate} - Onsdagshygge`;
-        const postMessage = 'Så er det tid igen! Ser vi dig på Onsdag til hygge, spil og kaffe? Forslag til hvad vi skal spille er meget velkomne!';
+        const postMessage = '@everyone Så er det tid igen! Ser vi dig på Onsdag til hygge, spil og kaffe? Forslag til hvad vi skal spille er meget velkomne!';
         
         const newPost = await channel.threads.create({
             name: postTitle,

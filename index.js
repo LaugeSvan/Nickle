@@ -40,6 +40,17 @@ client.once(Events.ClientReady, (readyClient) => {
     });
 
     console.log(`ready.cron.${cronHour}.${cronMinute}.${cronDay}`);
+
+    // Cron job til at slette gamle posts (kører dagligt klokken 03:00)
+    cron.schedule('0 3 * * *', () => {
+        console.log('execute.cron.delete-old-posts');
+        deleteOldPosts();
+    }, {
+        scheduled: true,
+        timezone: timeZone,
+    });
+
+    console.log(`ready.cron.delete-old-posts.03:00`);
 });
 
 client.on(Events.MessageCreate, async message => {
@@ -177,6 +188,54 @@ async function createWeeklyOnsdagshyggePost() {
 
     } catch (error) {
         console.error('error.post.new');
+    }
+}
+
+async function deleteOldPosts() {
+    try {
+        const guild = client.guilds.cache.get(TARGET_GUILD_ID);
+        
+        if (!guild) {
+            console.error('error.guild.notfound.delete');
+            return;
+        }
+
+        const channel = guild.channels.cache.find(c => 
+            c.type === ChannelType.GuildForum && c.name.toLowerCase() === TARGET_CHANNEL_NAME
+        );
+
+        if (!channel) {
+            console.error('error.channel.notfound.delete');
+            return;
+        }
+
+        const NOW = Date.now();
+        const FOURTEEN_DAYS_IN_MS = 14 * 24 * 60 * 60 * 1000;
+
+        // Fetch alle threads i kanalen
+        const allThreads = await channel.threads.fetch();
+
+        let deletedCount = 0;
+
+        for (const [_, thread] of allThreads) {
+            const threadAge = NOW - thread.createdTimestamp;
+
+            // Hvis tråden er ældre end 14 dage, slet den
+            if (threadAge > FOURTEEN_DAYS_IN_MS) {
+                try {
+                    await thread.delete();
+                    console.log(`post.deleted.${thread.name}`);
+                    deletedCount++;
+                } catch (error) {
+                    console.error(`error.post.delete.${thread.name}:`, error.message);
+                }
+            }
+        }
+
+        console.log(`post.cleanup.deleted.${deletedCount}`);
+
+    } catch (error) {
+        console.error('error.delete.old-posts:', error.message);
     }
 }
 

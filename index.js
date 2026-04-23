@@ -15,10 +15,11 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.DirectMessages,
     ],
-    partials: [Partials.Channel, Partials.Message], 
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction], 
 });
 
 client.once(Events.ClientReady, (readyClient) => {
@@ -131,6 +132,35 @@ client.on(Events.MessageCreate, async message => {
             console.error('error.dm.reply');
             message.author.send(`Der opstod en fejl under afsendelse af svaret: ${error.message}`);
         }
+    }
+});
+
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+    if (user.bot) return;
+
+    try {
+        if (reaction.partial) await reaction.fetch();
+        if (reaction.message.partial) await reaction.message.fetch();
+    } catch (error) {
+        console.error('error.fetch.reaction', error);
+        return;
+    }
+
+    const emoji = reaction.emoji.name;
+    if (emoji !== '✅' && emoji !== '❌') return;
+
+    const channel = reaction.message.channel;
+    if (!channel.isThread()) return;
+    if (!channel.parent || channel.parent.name.toLowerCase() !== TARGET_CHANNEL_NAME) return;
+
+    const text = emoji === '✅'
+        ? `<@${user.id}> kommer`
+        : `<@${user.id}> kommer **ikke**`;
+
+    try {
+        await channel.send(text);
+    } catch (error) {
+        console.error('error.send.reaction-response', error);
     }
 });
 
